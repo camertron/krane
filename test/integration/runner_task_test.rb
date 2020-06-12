@@ -284,6 +284,24 @@ class RunnerTaskTest < Krane::IntegrationTest
     ], in_order: true)
   end
 
+  def test_run_adds_custom_image_provided_to_the_task_container
+    deploy_task_template
+
+    task_runner = build_task_runner
+    result = task_runner.run(
+      template: 'hello-cloud-template-runner',
+      command: ['/bin/sh', '-c'],
+      arguments: ['echo "The value is: $MY_CUSTOM_VARIABLE"'],
+      image: 'gcc:4.9'
+    )
+    assert_task_run_success(result)
+
+    pods = kubeclient.get_pods(namespace: @namespace)
+    assert_equal(1, pods.length, "Expected 1 pod to exist, found #{pods.length}")
+    container = pods.first.spec.containers.find { |cont| cont.name == 'task-runner' }
+    assert_equal('gcc:4.9', container.image, "Container image should have been upadted")
+  end
+
   private
 
   def deploy_unschedulable_template
